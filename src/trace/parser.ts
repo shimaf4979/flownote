@@ -48,5 +48,5 @@ export async function pickTraceFile(): Promise<vscode.Uri | undefined> {
 }
 
 export async function listTraceFiles(): Promise<vscode.Uri[]> {
-  return vscode.workspace.findFiles(".code-flow/*.json");
+  return vscode.workspace.findFiles(".code-flow/**/*.json");
 }

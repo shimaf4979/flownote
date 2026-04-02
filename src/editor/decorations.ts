@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "node:path";
 
 import type { CodeFlowTraceStep } from "../trace/schema";
 
@@ -30,8 +31,13 @@ export class TraceEditorDecorations implements vscode.Disposable {
     }
   }
 
-  public async revealStep(step: CodeFlowTraceStep): Promise<vscode.Uri | undefined> {
-    const editorResult = await openEditorForStep(step);
+  public async revealStep(
+    step: CodeFlowTraceStep,
+    traceFileUri?: vscode.Uri,
+    options?: { scrollEditor?: boolean },
+  ): Promise<vscode.Uri | undefined> {
+    const scrollEditor = options?.scrollEditor !== false;
+    const editorResult = await openEditorForStep(step, traceFileUri);
     if (!editorResult) {
       return undefined;
     }
@@ -41,11 +47,13 @@ export class TraceEditorDecorations implements vscode.Disposable {
     const stepKind = normalizeKind(step.kind);
     const activeStepDecoration =
       this.activeStepDecorations.get(stepKind) ?? this.activeStepDecorations.get("call");
-    editor.selection = new vscode.Selection(targetRange.start, targetRange.start);
-    editor.revealRange(
-      new vscode.Range(targetRange.start, targetRange.start),
-      vscode.TextEditorRevealType.AtTop,
-    );
+    if (scrollEditor) {
+      editor.selection = new vscode.Selection(targetRange.start, targetRange.start);
+      editor.revealRange(
+        new vscode.Range(targetRange.start, targetRange.start),
+        vscode.TextEditorRevealType.AtTop,
+      );
+    }
 
     if (!activeStepDecoration) {
       return fileUri;
@@ -60,45 +68,87 @@ export class TraceEditorDecorations implements vscode.Disposable {
 
 async function openEditorForStep(
   step: CodeFlowTraceStep,
+  traceFileUri?: vscode.Uri,
 ): Promise<{ editor: vscode.TextEditor; fileUri: vscode.Uri } | undefined> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  const fileUri = workspaceFolder
-    ? vscode.Uri.joinPath(workspaceFolder.uri, step.file)
-    : vscode.Uri.file(step.file);
+  const candidateUris = resolveFileCandidates(step.file, traceFileUri);
 
-  try {
-    const document = await vscode.workspace.openTextDocument(fileUri);
-    const existingEditor =
-      vscode.window.visibleTextEditors.find((editor) => editor.document.uri.scheme === "file") ??
-      vscode.window.activeTextEditor;
-    const targetViewColumn = existingEditor?.viewColumn ?? vscode.ViewColumn.One;
-    const editor = await vscode.window.showTextDocument(document, {
-      viewColumn: targetViewColumn,
-      preview: true,
-      preserveFocus: true,
-    });
-    return { editor, fileUri };
-  } catch {
-    void vscode.window.showWarningMessage(`FlowNote: could not open "${step.file}".`);
-    return undefined;
+  for (const fileUri of candidateUris) {
+    try {
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      const existingEditor =
+        vscode.window.visibleTextEditors.find((editor) => editor.document.uri.scheme === "file") ??
+        vscode.window.activeTextEditor;
+      const targetViewColumn = existingEditor?.viewColumn ?? vscode.ViewColumn.One;
+      const editor = await vscode.window.showTextDocument(document, {
+        viewColumn: targetViewColumn,
+        preview: true,
+        preserveFocus: true,
+      });
+      return { editor, fileUri };
+    } catch {
+      // Try next candidate URI.
+    }
   }
+
+  void vscode.window.showWarningMessage(`FlowNote: could not open "${step.file}".`);
+  return undefined;
+}
+
+function resolveFileCandidates(stepFile: string, traceFileUri?: vscode.Uri): vscode.Uri[] {
+  if (path.isAbsolute(stepFile)) {
+    return [vscode.Uri.file(stepFile)];
+  }
+
+  const candidates: vscode.Uri[] = [];
+  const seen = new Set<string>();
+  const pushUnique = (uri: vscode.Uri): void => {
+    const key = uri.toString();
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    candidates.push(uri);
+  };
+
+  if (traceFileUri?.scheme === "file") {
+    const traceDir = path.dirname(traceFileUri.fsPath);
+    pushUnique(vscode.Uri.file(path.resolve(traceDir, stepFile)));
+  }
+
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder) {
+    pushUnique(vscode.Uri.joinPath(workspaceFolder.uri, stepFile));
+  }
+
+  if (candidates.length === 0) {
+    pushUnique(vscode.Uri.file(path.resolve(stepFile)));
+  }
+
+  return candidates;
 }
 
 function toRange(step: CodeFlowTraceStep): vscode.Range {
   const startLine = (step.range?.startLine ?? step.line) - 1;
   const endLine = (step.range?.endLine ?? step.line) - 1;
+  const hasColumnHint =
+    step.range?.startColumn !== undefined || step.range?.endColumn !== undefined;
+
+  if (hasColumnHint) {
+    const startCharacter = (step.range?.startColumn ?? 1) - 1;
+    const endCharacter =
+      step.range?.endColumn !== undefined
+        ? step.range.endColumn
+        : Number.MAX_SAFE_INTEGER;
+    return new vscode.Range(startLine, startCharacter, endLine, endCharacter);
+  }
+
   const stepKind = normalizeKind(step.kind);
   if (stepKind === "call" || stepKind === "resume") {
     return new vscode.Range(startLine, 0, endLine, Number.MAX_SAFE_INTEGER);
   }
 
-  const startCharacter = step.range?.startColumn ? step.range.startColumn - 1 : 0;
-  const endCharacter =
-    step.range?.endColumn !== undefined
-      ? step.range.endColumn
-      : endLine === startLine
-        ? Number.MAX_SAFE_INTEGER
-        : Number.MAX_SAFE_INTEGER;
+  const startCharacter = 0;
+  const endCharacter = Number.MAX_SAFE_INTEGER;
 
   return new vscode.Range(startLine, startCharacter, endLine, endCharacter);
 }

@@ -1,7 +1,7 @@
 {
   "name": "flownote",
   "displayName": "FlowNote",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Trace AI-generated code-flow JSON files inside VS Code.",
   "categories": [
     "Other"
@@ -37,7 +37,9 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "package": "pnpm build && vsce package --no-dependencies",
-    "publish:dry-run": "pnpm build && vsce publish --no-dependencies --dry-run"
+    "publish:dry-run": "pnpm build && vsce publish --no-dependencies --dry-run",
+    "publish:vsce": "pnpm build && vsce publish --no-dependencies",
+    "publish:ovsx": "pnpm build && ovsx publish --no-dependencies"
   },
   "dependencies": {
     "ajv": "^8.18.0"
@@ -46,12 +48,31 @@
     "@types/node": "^25.5.0",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.7.1",
+    "ovsx": "^0.10.10",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.58.0",
     "tsup": "^8.5.1",
     "typescript": "^6.0.2"
   },
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "flownote",
+          "title": "FlowNote",
+          "icon": "icon.png"
+        }
+      ]
+    },
+    "views": {
+      "flownote": [
+        {
+          "id": "flownote.controls",
+          "name": "Flow Controls",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "flownote.openTrace",
@@ -76,6 +97,10 @@
       {
         "command": "flownote.copyPromptForAi",
         "title": "FlowNote: Copy Prompt for AI"
+      },
+      {
+        "command": "flownote.createExampleTodoFiles",
+        "title": "FlowNote: Create Todo Example Files"
       }
     ],
     "menus": {
@@ -124,12 +149,14 @@
   },
   "activationEvents": [
     "onStartupFinished",
+    "onView:flownote.controls",
     "onCommand:flownote.openTrace",
     "onCommand:flownote.nextStep",
     "onCommand:flownote.previousStep",
     "onCommand:flownote.previousCallStep",
     "onCommand:flownote.nextResumeStep",
-    "onCommand:flownote.copyPromptForAi"
+    "onCommand:flownote.copyPromptForAi",
+    "onCommand:flownote.createExampleTodoFiles"
   ],
   "engines": {
     "vscode": "^1.95.0"

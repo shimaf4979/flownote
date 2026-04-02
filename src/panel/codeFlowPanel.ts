@@ -531,30 +531,6 @@ export class CodeFlowPanel implements vscode.Disposable {
         }
       }
 
-      function ensureActiveStepVisible() {
-        const sidebar = document.querySelector(".sidebar");
-        const activeStep = document.querySelector(".stepButton.active");
-        if (!sidebar || !activeStep) {
-          return;
-        }
-
-        const sidebarRect = sidebar.getBoundingClientRect();
-        const activeRect = activeStep.getBoundingClientRect();
-        const margin = 6;
-        let delta = 0;
-        if (activeRect.top < sidebarRect.top + margin) {
-          delta = activeRect.top - sidebarRect.top - margin;
-        } else if (activeRect.bottom > sidebarRect.bottom - margin) {
-          delta = activeRect.bottom - sidebarRect.bottom + margin;
-        }
-
-        if (delta !== 0) {
-          sidebar.scrollTop += delta;
-        }
-
-        captureScrollState();
-      }
-
       function render() {
         if (!state) {
           app.innerHTML = "<div style='padding: 16px;'>Loading trace...</div>";
@@ -643,6 +619,9 @@ export class CodeFlowPanel implements vscode.Disposable {
         \`;
 
         document.querySelectorAll("[data-step-index]").forEach((button) => {
+          button.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+          });
           button.addEventListener("click", () => {
             const stepIndex = Number(button.getAttribute("data-step-index"));
             vscode.postMessage({ type: "select-step", stepIndex });
@@ -691,7 +670,6 @@ export class CodeFlowPanel implements vscode.Disposable {
         };
         initializeResizer();
         restoreScrollState();
-        ensureActiveStepVisible();
       }
 
       function initializeResizer() {
@@ -859,7 +837,7 @@ export class CodeFlowPanel implements vscode.Disposable {
         const kind = normalizeKind(step.kind);
         const ratio = total <= 1 ? 1 : index / (total - 1);
         const palette = getStackPalette(kind, ratio);
-        const width = index === total - 1 ? 240 : 164;
+        const width = 240;
         return [
           \`--stack-width: \${width}px\`,
           \`--stack-background: \${palette.background}\`,

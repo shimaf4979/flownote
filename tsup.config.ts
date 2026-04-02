@@ -9,4 +9,5 @@ export default defineConfig({
   clean: true,
   outDir: "dist",
   external: ["vscode"],
+  noExternal: ["ajv"],
 });

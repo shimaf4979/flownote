@@ -5,11 +5,11 @@ FlowNote is a VS Code extension for viewing AI-generated `.code-flow/*.json` tra
 ## MVP features
 
 - Open a trace file from `.code-flow/*.json`
-- Inspect steps in a dedicated tab
-- Switch traces from the in-panel selector
-- Move with `Next` / `Previous`
+- Inspect steps in the **Flow Controls** view (activity bar) and switch traces from the in-panel selector
+- Move with **Next** / **Previous**, and jump parent call / resume with **Previous Parent Call** / **Next Parent Resume**
 - Highlight the current line or range in the editor
 - Copy an AI prompt template for generating new JSON trace files
+- Optional: scaffold a Todo clean-architecture markdown example via **Create Todo Example Files**
 
 ## Trace schema v1
 
@@ -119,7 +119,12 @@ UI note:
 - `FlowNote: Open Trace`
 - `FlowNote: Next Step`
 - `FlowNote: Previous Step`
+- `FlowNote: Previous Parent Call`
+- `FlowNote: Next Parent Resume`
 - `FlowNote: Copy Prompt for AI`
+- `FlowNote: Create Todo Example Files`
+
+With the Flow Controls webview focused, arrow keys move steps: Up/Down for previous/next step, Left/Right for parent call / parent resume.
 
 ## Workflow
 
@@ -127,7 +132,9 @@ UI note:
 2. Run `FlowNote: Copy Prompt for AI`.
 3. Ask your preferred AI to generate `.code-flow/generated-trace.json`.
 4. Run `FlowNote: Open Trace`.
-5. Move through the trace in the tab and inspect highlighted code.
+5. Move through the trace in the Flow Controls tab and inspect highlighted code.
+
+Optional: run `FlowNote: Create Todo Example Files` to scaffold `.code-flow/example/` markdown and a sample trace for trying the UI.
 
 ## Development
 
@@ -137,11 +144,41 @@ pnpm check
 pnpm build
 ```
 
+Optional: `pnpm lint`, `pnpm format` (see `package.json` scripts).
+
 Press `F5` in VS Code to launch the extension development host.
 
-## Release path
+## Git repository
 
-1. Finish the MVP commands and schema compatibility.
-2. Add Marketplace metadata like real `publisher`, repository URL, and screenshots.
-3. Run `pnpm package` to generate a `.vsix`.
-4. Replace the placeholder publisher before running `vsce publish`.
+Remote URL (also in `package.json` → `repository.url`):
+
+```text
+https://github.com/shimaf4979/flownote
+```
+
+Clone:
+
+```bash
+git clone https://github.com/shimaf4979/flownote.git
+cd flownote
+```
+
+## What belongs in Git (and what does not)
+
+The canonical list is `.gitignore`. In practice:
+
+- **Committed:** extension source under `src/`, `package.json`, lockfile, `README.md`, `LICENSE`, `icon.png`, bundled `examples/`, config such as `tsconfig.json` / `tsup.config.ts`, and trace authoring docs (for example `TRACE_AUTHORING_GUIDE.md`).
+- **Not committed:** `node_modules/`, build output `dist/`, packaged extensions `*.vsix`, local env files (`.env`), editor metadata (`.vscode/`, `.cursor/`), OS junk (`.DS_Store`), logs (`*.log`), coverage output, TypeScript incremental caches (`*.tsbuildinfo`), and the default local AI output path `.code-flow/generated-trace.json` inside a clone (your real projects may commit their own `.code-flow/` traces as you prefer).
+
+After `pnpm package`, VS Code produces `flownote-<version>.vsix` in the repo root. That file is for local install or manual sharing; it is **not** tracked in this repository.
+
+## Release
+
+1. Set the next version in `package.json` (`version` field).
+2. Verify locally: `pnpm check`, `pnpm build`, and exercise the extension with **F5**.
+3. **Local `.vsix`:** `pnpm package` → installs as *Extensions: Install from VSIX…* in VS Code. Output filename matches `flownote-<version>.vsix` and is gitignored.
+4. **Visual Studio Marketplace:** configure the publisher (`publisher` in `package.json` is `shimaf4979`) and run `pnpm publish:vsce` when ready (requires `vsce` login / token as documented by Microsoft).
+5. **Open VSX** (optional, e.g. for VS Codium): `pnpm publish:ovsx` after `ovsx` authentication.
+6. Dry run: `pnpm publish:dry-run` runs `vsce publish --dry-run` without publishing.
+
+For Marketplace listings, add screenshots and a concise changelog in the publisher UI as needed; they are not stored in this repo’s `package.json` beyond `repository` and `icon`.

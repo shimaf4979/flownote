@@ -6,3 +6,9 @@ dist
 node_modules
 
 devs
+
+*.vsix
+*.tsbuildinfo
+coverage
+*.log
+.code-flow/generated-trace.json

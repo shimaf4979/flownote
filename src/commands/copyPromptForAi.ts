@@ -109,6 +109,8 @@ Trace schema v1:
 Entrypoint:
 - file: ${relativeFilePath}
 - line: ${entryLine}
+
+What I am to explore >>
 `;
 
   await vscode.env.clipboard.writeText(prompt);

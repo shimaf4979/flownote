@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { createExampleTodoFiles } from "./commands/createExampleTodoFiles";
 import { copyPromptForAi } from "./commands/copyPromptForAi";
 import { TraceEditorDecorations } from "./editor/decorations";
 import { TraceHoverProvider } from "./editor/hoverProvider";
@@ -7,6 +8,7 @@ import { StepCodeLensProvider } from "./editor/stepCodeLensProvider";
 import { CodeFlowPanel } from "./panel/codeFlowPanel";
 import { listTraceFiles, parseTraceFile, pickTraceFile } from "./trace/parser";
 import type { ParsedTraceFile } from "./trace/schema";
+import { FlowNoteControlsViewProvider } from "./views/controlsView";
 
 interface ExtensionState {
   traceFile?: ParsedTraceFile;
@@ -14,15 +16,21 @@ interface ExtensionState {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const decorations = new TraceEditorDecorations();
-  const hoverProvider = new TraceHoverProvider();
-  const stepCodeLensProvider = new StepCodeLensProvider();
+  const output = vscode.window.createOutputChannel("FlowNote");
+  context.subscriptions.push(output);
+  output.appendLine("activate: start");
+
+  let decorations: TraceEditorDecorations | undefined;
+  let hoverProvider: TraceHoverProvider | undefined;
+  let stepCodeLensProvider: StepCodeLensProvider | undefined;
+  let controlsViewProvider: FlowNoteControlsViewProvider | undefined;
   const state: ExtensionState = {
     currentStepIndex: 0,
   };
 
   let panel: CodeFlowPanel | undefined;
   let codeLensRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let hasAdjustedEditorLayout = false;
 
   const refreshCodeLenses = (): void => {
     void vscode.commands.executeCommand("editor.action.codelens.refresh");
@@ -42,8 +50,14 @@ export function activate(context: vscode.ExtensionContext): void {
     }));
   };
 
-  const updateUi = async (): Promise<void> => {
+  const updateUi = async (options?: { scrollEditor?: boolean }): Promise<void> => {
     if (!state.traceFile) {
+      return;
+    }
+    if (!decorations || !hoverProvider || !stepCodeLensProvider) {
+      void vscode.window.showErrorMessage(
+        "FlowNote: internal services are not initialized. Reload window and retry.",
+      );
       return;
     }
 
@@ -58,7 +72,10 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    const fileUri = await decorations.revealStep(currentStep);
+    const scrollEditor = options?.scrollEditor !== false;
+    const fileUri = await decorations.revealStep(currentStep, vscode.Uri.parse(state.traceFile.uri), {
+      scrollEditor,
+    });
     if (fileUri) {
       hoverProvider.setCurrentStep(fileUri, currentStep);
       stepCodeLensProvider.setCurrentStep(
@@ -96,7 +113,7 @@ export function activate(context: vscode.ExtensionContext): void {
           },
           onSelectStep: (stepIndex) => {
             state.currentStepIndex = stepIndex;
-            void updateUi();
+            void updateUi({ scrollEditor: false });
           },
           onNextStep: () => {
             state.currentStepIndex += 1;
@@ -119,6 +136,12 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       context.subscriptions.push(panel);
       panel.reveal(true);
+      if (!hasAdjustedEditorLayout) {
+        hasAdjustedEditorLayout = true;
+        setTimeout(() => {
+          void vscode.commands.executeCommand("workbench.action.evenEditorWidths");
+        }, 30);
+      }
     }
   };
 
@@ -198,27 +221,56 @@ export function activate(context: vscode.ExtensionContext): void {
     await updateUi();
   };
 
+  // Register commands first so command IDs are always available even if view registration fails.
   context.subscriptions.push(
-    decorations,
-    hoverProvider,
-    stepCodeLensProvider,
-    vscode.languages.registerCodeLensProvider({ scheme: "file" }, stepCodeLensProvider),
-    vscode.window.onDidChangeActiveTextEditor(() => {
-      refreshCodeLenses();
-    }),
     vscode.commands.registerCommand("flownote.openTrace", openTrace),
     vscode.commands.registerCommand("flownote.nextStep", nextStep),
     vscode.commands.registerCommand("flownote.previousStep", previousStep),
     vscode.commands.registerCommand("flownote.previousCallStep", previousCallStep),
     vscode.commands.registerCommand("flownote.nextResumeStep", nextResumeStep),
     vscode.commands.registerCommand("flownote.copyPromptForAi", copyPromptForAi),
+    vscode.commands.registerCommand("flownote.createExampleTodoFiles", createExampleTodoFiles),
     vscode.commands.registerCommand("flownote.noop", () => {}),
+  );
+
+  try {
+    decorations = new TraceEditorDecorations();
+    hoverProvider = new TraceHoverProvider();
+    stepCodeLensProvider = new StepCodeLensProvider();
+    controlsViewProvider = new FlowNoteControlsViewProvider();
+
+    context.subscriptions.push(decorations, hoverProvider, stepCodeLensProvider);
+    context.subscriptions.push(
+      vscode.languages.registerCodeLensProvider({ scheme: "file" }, stepCodeLensProvider),
+    );
+    context.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor(() => {
+        refreshCodeLenses();
+      }),
+    );
+
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(
+        FlowNoteControlsViewProvider.viewType,
+        controlsViewProvider,
+      ),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    output.appendLine(`activate: service initialization failed: ${message}`);
+    void vscode.window.showErrorMessage(
+      "FlowNote: failed to initialize extension services. Open Output > FlowNote for details.",
+    );
+  }
+
+  context.subscriptions.push(
     new vscode.Disposable(() => {
       if (codeLensRefreshTimer) {
         clearTimeout(codeLensRefreshTimer);
       }
     }),
   );
+  output.appendLine("activate: done");
 }
 
 export function deactivate(): void {
