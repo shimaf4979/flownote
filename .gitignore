@@ -1,0 +1,8 @@
+.vscode
+.env
+.DS_Store
+.cursor
+dist
+node_modules
+
+devs
