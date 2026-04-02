@@ -2,6 +2,16 @@
 
 FlowNote is a VS Code extension for viewing AI-generated `.code-flow/*.json` traces in a debugger-like workflow.
 
+## Demo
+
+**Step through a trace** — Use **Flow Controls** (Prev / Next, Parent Call / Parent Resume) while the editor highlights the current step.
+
+![Step through a code flow with Flow Controls](trace003.gif)
+
+**Copy Prompt for AI** — Generate a trace from your entrypoint, then step the resulting flow in the list and editor.
+
+![Copy Prompt and step through the trace](prompt.gif)
+
 ## MVP features
 
 - Open a trace file from `.code-flow/*.json`
