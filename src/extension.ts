@@ -97,7 +97,6 @@ export function activate(context: vscode.ExtensionContext): void {
         currentStepIndex: boundedIndex,
         traceOptions: await getTraceOptions(),
       });
-      panel.reveal(true);
     } else {
       panel = new CodeFlowPanel(
         context.extensionUri,

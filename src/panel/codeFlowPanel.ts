@@ -670,6 +670,11 @@ export class CodeFlowPanel implements vscode.Disposable {
         };
         initializeResizer();
         restoreScrollState();
+        requestAnimationFrame(() => {
+          const sidebar = document.querySelector(".sidebar");
+          const active = sidebar?.querySelector(".stepButton.active");
+          active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        });
       }
 
       function initializeResizer() {

@@ -157,19 +157,3 @@ pnpm build
 Optional: `pnpm lint`, `pnpm format` (see `package.json` scripts).
 
 Press `F5` in VS Code to launch the extension development host.
-
-## Git repository
-
-Remote URL (also in `package.json` → `repository.url`):
-
-```text
-https://github.com/shimaf4979/flownote
-```
-
-Clone:
-
-```bash
-git clone https://github.com/shimaf4979/flownote.git
-cd flownote
-```
-

@@ -75,6 +75,13 @@ async function openEditorForStep(
   for (const fileUri of candidateUris) {
     try {
       const document = await vscode.workspace.openTextDocument(fileUri);
+      const alreadyVisible = vscode.window.visibleTextEditors.find(
+        (editor) => editor.document.uri.toString() === document.uri.toString(),
+      );
+      if (alreadyVisible) {
+        return { editor: alreadyVisible, fileUri };
+      }
+
       const existingEditor =
         vscode.window.visibleTextEditors.find((editor) => editor.document.uri.scheme === "file") ??
         vscode.window.activeTextEditor;
