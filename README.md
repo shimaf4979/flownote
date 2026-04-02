@@ -173,22 +173,3 @@ git clone https://github.com/shimaf4979/flownote.git
 cd flownote
 ```
 
-## What belongs in Git (and what does not)
-
-The canonical list is `.gitignore`. In practice:
-
-- **Committed:** extension source under `src/`, `package.json`, lockfile, `README.md`, `LICENSE`, `icon.png`, bundled `examples/`, config such as `tsconfig.json` / `tsup.config.ts`, and trace authoring docs (for example `TRACE_AUTHORING_GUIDE.md`).
-- **Not committed:** `node_modules/`, build output `dist/`, packaged extensions `*.vsix`, local env files (`.env`), editor metadata (`.vscode/`, `.cursor/`), OS junk (`.DS_Store`), logs (`*.log`), coverage output, TypeScript incremental caches (`*.tsbuildinfo`), and the default local AI output path `.code-flow/generated-trace.json` inside a clone (your real projects may commit their own `.code-flow/` traces as you prefer).
-
-After `pnpm package`, VS Code produces `flownote-<version>.vsix` in the repo root. That file is for local install or manual sharing; it is **not** tracked in this repository.
-
-## Release
-
-1. Set the next version in `package.json` (`version` field).
-2. Verify locally: `pnpm check`, `pnpm build`, and exercise the extension with **F5**.
-3. **Local `.vsix`:** `pnpm package` → installs as *Extensions: Install from VSIX…* in VS Code. Output filename matches `flownote-<version>.vsix` and is gitignored.
-4. **Visual Studio Marketplace:** configure the publisher (`publisher` in `package.json` is `shimaf4979`) and run `pnpm publish:vsce` when ready (requires `vsce` login / token as documented by Microsoft).
-5. **Open VSX** (optional, e.g. for VS Codium): `pnpm publish:ovsx` after `ovsx` authentication.
-6. Dry run: `pnpm publish:dry-run` runs `vsce publish --dry-run` without publishing.
-
-For Marketplace listings, add screenshots and a concise changelog in the publisher UI as needed; they are not stored in this repo’s `package.json` beyond `repository` and `icon`.
