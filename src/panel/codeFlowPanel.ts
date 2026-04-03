@@ -3,6 +3,8 @@ import * as vscode from "vscode";
 import type { CodeFlowTraceDocument } from "../trace/schema";
 
 export interface CodeFlowPanelState {
+  /** 解析・一覧取得中は true。左ペインのステップ列に読み込み表示を出す */
+  loading?: boolean;
   traceUri: string;
   trace: CodeFlowTraceDocument;
   currentStepIndex: number;
@@ -64,9 +66,22 @@ export class CodeFlowPanel implements vscode.Disposable {
   }
 
   public updateState(nextState: CodeFlowPanelState): void {
+    const prior = this.state;
+    const onlyStepChanged =
+      nextState.loading === prior.loading &&
+      nextState.traceUri === prior.traceUri &&
+      nextState.trace === prior.trace &&
+      nextState.traceOptions === prior.traceOptions &&
+      nextState.currentStepIndex !== prior.currentStepIndex;
+
     this.state = nextState;
     this.panel.title = `FlowNote: ${nextState.trace.name}`;
-    void this.postState();
+
+    if (onlyStepChanged) {
+      void this.postStepIndex(nextState.currentStepIndex);
+    } else {
+      void this.postState();
+    }
   }
 
   public dispose(): void {
@@ -85,6 +100,13 @@ export class CodeFlowPanel implements vscode.Disposable {
     await this.panel.webview.postMessage({
       type: "state",
       payload: this.state,
+    });
+  }
+
+  private async postStepIndex(index: number): Promise<void> {
+    await this.panel.webview.postMessage({
+      type: "step",
+      index,
     });
   }
 
@@ -499,6 +521,39 @@ export class CodeFlowPanel implements vscode.Disposable {
         display: none;
       }
 
+      .stepsLoading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 28px 16px 36px;
+        min-height: 140px;
+        color: var(--vscode-descriptionForeground);
+        text-align: center;
+      }
+
+      .stepsLoadingSpinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid var(--vscode-panel-border);
+        border-top-color: var(--vscode-focusBorder);
+        border-radius: 50%;
+        animation: flownoteStepsSpin 0.75s linear infinite;
+      }
+
+      @keyframes flownoteStepsSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .stepsLoadingText {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
     </style>
   </head>
   <body>
@@ -531,66 +586,24 @@ export class CodeFlowPanel implements vscode.Disposable {
         }
       }
 
-      function render() {
-        if (!state) {
-          app.innerHTML = "<div style='padding: 16px;'>Loading trace...</div>";
-          return;
+      function buildStepDetailInnerHtml() {
+        if (state.loading) {
+          return \`
+                <div class="card">
+                  <p class="eyebrow">Current Step</p>
+                  <p>トレースを読み込み中… ステップ一覧の準備ができ次第、ここに表示されます。</p>
+                </div>
+          \`;
         }
-
-        captureScrollState();
-
         const currentStep = state.trace.steps[state.currentStepIndex];
+        if (!currentStep) {
+          return "";
+        }
         const stackBreadcrumbMarkup = renderStackBreadcrumb(
           state.trace.steps,
           state.currentStepIndex,
         );
-        const traceOptionsMarkup = state.traceOptions
-          .map((option) => {
-            const selected = option.uri === state.traceUri ? "selected" : "";
-            return \`<option value="\${escapeHtml(option.uri)}" \${selected}>\${escapeHtml(option.label)}</option>\`;
-          })
-          .join("");
-        const stepsMarkup = state.trace.steps
-          .map((step, index) => {
-            const isActive = index === state.currentStepIndex;
-            const kind = normalizeKind(step.kind);
-            const treeMarkup = renderTree(state.trace.steps, index, step.depth, kind);
-            return \`
-              <button class="stepButton kind-\${kind} \${isActive ? "active" : ""}" data-step-index="\${index}" style="--depth: \${step.depth};">
-                <span class="stepTree" aria-hidden="true">\${treeMarkup}</span>
-                <span class="stepBody">
-                  <span class="stepTitleRow">
-                    <strong class="stepTitle">\${escapeHtml(step.title)}</strong>
-                  </span>
-                  <span class="stepMeta">
-                    <span class="stepMetaFile">\${escapeHtml(getFileName(step.file))}</span>
-                    <span class="stepMetaKind kindBadge">\${escapeHtml(kind)}</span>
-                  </span>
-                </span>
-              </button>
-            \`;
-          })
-          .join("");
-
-        app.innerHTML = \`
-          <div class="layout" style="--sidebar-width: \${getSidebarWidth()}px;">
-            <aside class="sidebar">
-              <div class="header">
-                <h1 class="title">\${escapeHtml(state.trace.name)}</h1>
-                <p class="description">\${escapeHtml(state.trace.description || "AI-generated code flow trace")}</p>
-                <select id="trace-picker" class="tracePicker">
-                  \${traceOptionsMarkup}
-                </select>
-              </div>
-              <div class="steps">\${stepsMarkup}</div>
-            </aside>
-            <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panels"></div>
-            <main class="content">
-              <div class="toolbar">
-                <button id="previous" class="secondary" \${state.currentStepIndex === 0 ? "disabled" : ""}>Previous</button>
-                <button id="next" \${state.currentStepIndex === state.trace.steps.length - 1 ? "disabled" : ""}>Next</button>
-              </div>
-              <section class="stepDetail">
+        return \`
                 <div class="card">
                   <p class="eyebrow">Current Step</p>
                   \${stackBreadcrumbMarkup}
@@ -613,6 +626,103 @@ export class CodeFlowPanel implements vscode.Disposable {
                     <div class="code">\${escapeHtml(currentStep.code)}</div>
                   </div>
                 \` : ""}
+        \`;
+      }
+
+      function applyStepOnly() {
+        if (!state || state.loading || !document.querySelector(".layout")) {
+          return;
+        }
+        const idx = state.currentStepIndex;
+        const stepsLen = state.trace.steps.length;
+        document.querySelectorAll(".steps [data-step-index]").forEach((button) => {
+          const i = Number(button.getAttribute("data-step-index"));
+          button.classList.toggle("active", i === idx);
+        });
+        const prevBtn = document.getElementById("previous");
+        const nextBtn = document.getElementById("next");
+        if (prevBtn) {
+          prevBtn.disabled = idx === 0;
+        }
+        if (nextBtn) {
+          nextBtn.disabled = idx >= stepsLen - 1;
+        }
+        const detail = document.querySelector(".stepDetail");
+        if (detail) {
+          detail.innerHTML = buildStepDetailInnerHtml();
+        }
+        requestAnimationFrame(() => {
+          const sidebar = document.querySelector(".sidebar");
+          const active = sidebar?.querySelector(".stepButton.active");
+          active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        });
+      }
+
+      function render() {
+        if (!state) {
+          app.innerHTML = "<div style='padding: 16px;'>Loading trace...</div>";
+          return;
+        }
+
+        captureScrollState();
+
+        const traceOptionsMarkup = state.traceOptions
+          .map((option) => {
+            const selected = option.uri === state.traceUri ? "selected" : "";
+            return \`<option value="\${escapeHtml(option.uri)}" \${selected}>\${escapeHtml(option.label)}</option>\`;
+          })
+          .join("");
+        const stepsInner = state.loading
+          ? \`<div class="stepsLoading" role="status" aria-live="polite">
+              <div class="stepsLoadingSpinner" aria-hidden="true"></div>
+              <p class="stepsLoadingText">トレースを読み込み中…</p>
+            </div>\`
+          : state.trace.steps
+              .map((step, index) => {
+                const isActive = index === state.currentStepIndex;
+                const kind = normalizeKind(step.kind);
+                const treeMarkup = renderTree(state.trace.steps, index, step.depth, kind);
+                return \`
+              <button class="stepButton kind-\${kind} \${isActive ? "active" : ""}" data-step-index="\${index}" style="--depth: \${step.depth};">
+                <span class="stepTree" aria-hidden="true">\${treeMarkup}</span>
+                <span class="stepBody">
+                  <span class="stepTitleRow">
+                    <strong class="stepTitle">\${escapeHtml(step.title)}</strong>
+                  </span>
+                  <span class="stepMeta">
+                    <span class="stepMetaFile">\${escapeHtml(getFileName(step.file))}</span>
+                    <span class="stepMetaKind kindBadge">\${escapeHtml(kind)}</span>
+                  </span>
+                </span>
+              </button>
+            \`;
+              })
+              .join("");
+
+        const navLocked = state.loading;
+        const atFirst = state.currentStepIndex === 0;
+        const atLast = state.currentStepIndex >= state.trace.steps.length - 1;
+
+        app.innerHTML = \`
+          <div class="layout" style="--sidebar-width: \${getSidebarWidth()}px;">
+            <aside class="sidebar">
+              <div class="header">
+                <h1 class="title">\${escapeHtml(state.trace.name)}</h1>
+                <p class="description">\${escapeHtml(state.trace.description || "AI-generated code flow trace")}</p>
+                <select id="trace-picker" class="tracePicker" \${navLocked ? "disabled" : ""}>
+                  \${traceOptionsMarkup}
+                </select>
+              </div>
+              <div class="steps">\${stepsInner}</div>
+            </aside>
+            <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Resize panels"></div>
+            <main class="content">
+              <div class="toolbar">
+                <button id="previous" class="secondary" \${navLocked || atFirst ? "disabled" : ""}>Previous</button>
+                <button id="next" \${navLocked || atLast ? "disabled" : ""}>Next</button>
+              </div>
+              <section class="stepDetail">
+                \${buildStepDetailInnerHtml()}
               </section>
             </main>
           </div>
@@ -904,6 +1014,16 @@ export class CodeFlowPanel implements vscode.Disposable {
         if (event.data?.type === "state") {
           state = event.data.payload;
           render();
+        } else if (event.data?.type === "step" && typeof event.data.index === "number") {
+          if (!state) {
+            return;
+          }
+          state.currentStepIndex = event.data.index;
+          if (document.querySelector(".layout")) {
+            applyStepOnly();
+          } else {
+            render();
+          }
         }
       });
 

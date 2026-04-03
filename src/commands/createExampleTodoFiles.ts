@@ -1,5 +1,10 @@
 import * as vscode from "vscode";
 
+/**
+ * Creates the Todo clean-architecture example under `.code-flow/example/`:
+ * - `example.json` — sample FlowNote trace pointing at the markdown files
+ * - `01-entities.md` … `03-interfaces.md` — layered markdown + TS snippets for stepping
+ */
 const EXAMPLE_ROOT_DIR = ".code-flow/example";
 const TRACE_EXAMPLE_PATH = ".code-flow/example/example.json";
 

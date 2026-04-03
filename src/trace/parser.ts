@@ -48,5 +48,39 @@ export async function pickTraceFile(): Promise<vscode.Uri | undefined> {
 }
 
 export async function listTraceFiles(): Promise<vscode.Uri[]> {
-  return vscode.workspace.findFiles(".code-flow/**/*.json");
+  const roots = vscode.workspace.workspaceFolders;
+  if (!roots?.length) {
+    return [];
+  }
+
+  const uris: vscode.Uri[] = [];
+  for (const folder of roots) {
+    const codeFlowRoot = vscode.Uri.joinPath(folder.uri, ".code-flow");
+    try {
+      await collectJsonFilesUnderDirectory(uris, codeFlowRoot);
+    } catch {
+      // Missing or unreadable .code-flow — skip this workspace folder.
+    }
+  }
+
+  uris.sort((a, b) => a.fsPath.localeCompare(b.fsPath));
+  return uris;
+}
+
+async function collectJsonFilesUnderDirectory(acc: vscode.Uri[], dir: vscode.Uri): Promise<void> {
+  let entries: [string, vscode.FileType][];
+  try {
+    entries = await vscode.workspace.fs.readDirectory(dir);
+  } catch {
+    return;
+  }
+
+  for (const [name, type] of entries) {
+    const child = vscode.Uri.joinPath(dir, name);
+    if (type === vscode.FileType.Directory) {
+      await collectJsonFilesUnderDirectory(acc, child);
+    } else if (type === vscode.FileType.File && name.endsWith(".json")) {
+      acc.push(child);
+    }
+  }
 }

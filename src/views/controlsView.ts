@@ -72,7 +72,8 @@ export class FlowNoteControlsViewProvider implements vscode.WebviewViewProvider 
   <div class="stack">
     <button data-command="flownote.createExampleTodoFiles">Create Example</button>
     <button data-command="flownote.openTrace">Trace from JSON</button>
-    <button data-command="flownote.copyPromptForAi">Copy Prompt</button>
+    <button data-command="flownote.copyExplainPlanPrompt">Copy Plan Explain Prompt</button>
+    <button data-command="flownote.copyPromptForAi">Copy Structure Explain Prompt</button>
     <button data-command="flownote.previousStep">👆 Prev</button>
     <button data-command="flownote.nextStep">👇 Next</button>
     <button data-command="flownote.previousCallStep">👈 Parent Call</button>

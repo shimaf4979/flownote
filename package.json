@@ -1,7 +1,7 @@
 {
   "name": "flownote",
   "displayName": "FlowNote",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "description": "Trace AI-generated code-flow JSON files inside VS Code.",
   "categories": [
     "Other"
@@ -25,7 +25,6 @@
     "icon.png",
     "README.md",
     "LICENSE",
-    "prompt.gif",
     "trace003.gif"
   ],
   "type": "commonjs",
@@ -100,6 +99,10 @@
         "title": "FlowNote: Copy Prompt for AI"
       },
       {
+        "command": "flownote.copyExplainPlanPrompt",
+        "title": "FlowNote: Copy Prompt to Explain AI Plan / Changes"
+      },
+      {
         "command": "flownote.createExampleTodoFiles",
         "title": "FlowNote: Create Todo Example Files"
       }
@@ -149,7 +152,6 @@
     ]
   },
   "activationEvents": [
-    "onStartupFinished",
     "onView:flownote.controls",
     "onCommand:flownote.openTrace",
     "onCommand:flownote.nextStep",
@@ -157,6 +159,7 @@
     "onCommand:flownote.previousCallStep",
     "onCommand:flownote.nextResumeStep",
     "onCommand:flownote.copyPromptForAi",
+    "onCommand:flownote.copyExplainPlanPrompt",
     "onCommand:flownote.createExampleTodoFiles"
   ],
   "engines": {

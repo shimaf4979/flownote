@@ -1,5 +1,16 @@
 import * as vscode from "vscode";
 
+/**
+ * Builds the clipboard text for **Copy Prompt for AI**.
+ *
+ * Sections (top → bottom):
+ * 1. Structure outline (for humans)
+ * 2. Assistant task + Requirements
+ * 3. Output path
+ * 4. Trace schema v1 (JSON example)
+ * 5. Entrypoint (injected file/line)
+ * 6. After `---` — optional user notes
+ */
 export async function copyPromptForAi(): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   const workspaceFolder = activeEditor
@@ -13,7 +24,21 @@ export async function copyPromptForAi(): Promise<void> {
 
   const entryLine = activeEditor ? activeEditor.selection.active.line + 1 : 1;
 
-  const prompt = `Trace the code flow from the entrypoint below and generate a .code-flow JSON file.
+  const prompt = `Prompt structure (for humans — skim so you know what each block is):
+1. Assistant task + Requirements — rules for generating the trace JSON
+2. Output path — where to save the file
+3. Trace schema v1 — JSON shape example (entry + steps)
+4. Entrypoint — current file/line (filled by FlowNote)
+5. After the final "---" — optional notes you add for the assistant
+
+プロンプトの構成: 1.タスクと要件 2.出力パス 3.スキーマ例 4.エントリ（自動挿入）5.---のあとに追記
+
+---
+You are the assistant. Follow every instruction below exactly when generating the FlowNote trace JSON. Do not skip rules or invent fields outside this spec.
+
+（この先の要件・スキーマ・エントリに従って trace JSON を生成してください。）
+
+You are helping author a FlowNote trace file (JSON). Use the entrypoint below and follow the schema and requirements.
 
 Requirements:
 - Follow the trace schema exactly.
@@ -106,13 +131,15 @@ Trace schema v1:
 }
 \`\`\`
 
-Entrypoint:
+Entrypoint (use this as trace entry and as the starting step context):
 - file: ${relativeFilePath}
 - line: ${entryLine}
 
-What I am to explore >>
+---
+（利用者が追記）Additional context or requests for the assistant (write below, then send the full message):
+
 `;
 
   await vscode.env.clipboard.writeText(prompt);
-  void vscode.window.showInformationMessage("FlowNote: copied prompt template for AI.");
+  void vscode.window.showInformationMessage("FlowNote: copied prompt for the AI. Add notes at the end if needed.");
 }

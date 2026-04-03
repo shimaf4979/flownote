@@ -4,6 +4,32 @@
 
 このガイドの目的は、AI が生成した trace を人が読みやすくし、ステップ移動時の意味を揃えることです。
 
+## AI への依頼（Copy Prompt for AI）
+
+エディタでエントリにしたい位置にカーソルを置き、コマンド **FlowNote: Copy Prompt for AI**（Flow Controls の **Copy Structure Explain Prompt** ボタン）を実行すると、クリップボードにプロンプトが入ります。
+
+0. **Prompt structure** … 人間向けに、**このプロンプトのブロックが上から何番で何か**（要件・出力パス・スキーマ例・エントリ・追記欄）を英日で短く列挙した節。
+1. **本編の先頭** … **AI（アシスタント）に対し、以降の要件・スキーマに従って trace JSON を出すよう指示**する文（英語＋日本語の短い注）。
+2. **固定部分** … 出力先（`.code-flow/generated-trace.json`）、trace schema v1 の例、**現在のファイルパスと行番号**をエントリとして埋め込んだテンプレート、および本ガイドと整合するルールの箇条書き。
+3. **末尾** … 区切り線のあと、**利用者が任意で追記する欄**（追いたい範囲・前提など）。なくてもよい。
+
+プロンプトのルールやステップの分け方の詳細は、本書の各節と同じ考え方です。
+
+生成された JSON を `.code-flow/` 配下に保存し、FlowNote で **Open Trace** してください。
+
+## 別の AI のプラン・変更を解説させるプロンプト（Copy Prompt to Explain AI Plan / Changes）
+
+コマンド **FlowNote: Copy Prompt to Explain AI Plan / Changes**（Flow Controls の **Copy Plan Explain Prompt** ボタン）では、**別の AI の出力を解説させる**ためのプロンプトがクリップボードに入ります。**Copy Prompt for AI** と同じ **Requirements / Output path / Trace schema v1 / Entrypoint** を含みます（trace JSON を貼ったときに照合できるようにするため）。末尾に解説対象の本文を貼ります。
+
+0. **Prompt structure** … ブロックの並びを英日で列挙した節。
+1. **本編の先頭** … 別 AI の出力を説明する役割、trace のときは下記要件・スキーマに照らす旨（英語＋日本語）。
+2. **Requirements** … trace 用と同一のルール箇条書き。
+3. **Output path** / **Trace schema v1** / **Entrypoint** … trace 用と同一（現在ファイル・行は FlowNote が埋め込み）。
+4. **Context** … ワークスペースフォルダ（参考）。
+5. **末尾** … **解説してほしい別 AI の出力**を貼る欄。
+
+全文を AI に貼り、末尾に解説対象のテキストを足してから送ってください。
+
 ## 基本方針
 
 - 1ステップには 1つの意味だけを書く

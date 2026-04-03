@@ -5,11 +5,6 @@ import type { CodeFlowTraceStep } from "../trace/schema";
 export class TraceHoverProvider implements vscode.HoverProvider, vscode.Disposable {
   private currentStep: CodeFlowTraceStep | undefined;
   private currentFileUri: vscode.Uri | undefined;
-  private readonly registration: vscode.Disposable;
-
-  public constructor() {
-    this.registration = vscode.languages.registerHoverProvider({ scheme: "file" }, this);
-  }
 
   public setCurrentStep(fileUri: vscode.Uri, step: CodeFlowTraceStep): void {
     this.currentFileUri = fileUri;
@@ -57,6 +52,6 @@ export class TraceHoverProvider implements vscode.HoverProvider, vscode.Disposab
   }
 
   public dispose(): void {
-    this.registration.dispose();
+    this.clear();
   }
 }

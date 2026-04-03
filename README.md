@@ -10,7 +10,6 @@ FlowNote is a VS Code extension for viewing AI-generated `.code-flow/*.json` tra
 
 **Copy Prompt for AI** — Generate a trace from your entrypoint, then step the resulting flow in the list and editor.
 
-![Copy Prompt and step through the trace](prompt.gif)
 
 ## MVP features
 
@@ -18,7 +17,8 @@ FlowNote is a VS Code extension for viewing AI-generated `.code-flow/*.json` tra
 - Inspect steps in the **Flow Controls** view (activity bar) and switch traces from the in-panel selector
 - Move with **Next** / **Previous**, and jump parent call / resume with **Previous Parent Call** / **Next Parent Resume**
 - Highlight the current line or range in the editor
-- Copy an AI prompt template for generating new JSON trace files
+- Copy an AI prompt template for generating new JSON trace files (**Copy Structure Explain Prompt** / **Copy Prompt for AI**)
+- Copy a prompt for AI to explain **another AI’s** plan or changes (**Copy Plan Explain Prompt** — includes the same trace Requirements / schema / entrypoint as the structure prompt, then paste the other AI’s output at the end)
 - Optional: scaffold a Todo clean-architecture markdown example via **Create Todo Example Files**
 
 ## Trace schema v1
@@ -132,6 +132,7 @@ UI note:
 - `FlowNote: Previous Parent Call`
 - `FlowNote: Next Parent Resume`
 - `FlowNote: Copy Prompt for AI`
+- `FlowNote: Copy Prompt to Explain AI Plan / Changes`
 - `FlowNote: Create Todo Example Files`
 
 With the Flow Controls webview focused, arrow keys move steps: Up/Down for previous/next step, Left/Right for parent call / parent resume.
