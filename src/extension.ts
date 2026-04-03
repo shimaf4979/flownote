@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
   let panel: CodeFlowPanel | undefined;
   let codeLensRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   let hasAdjustedEditorLayout = false;
+  let traceOptionsCache: Array<{ uri: string; label: string }> | undefined;
 
   const refreshCodeLenses = (): void => {
     void vscode.commands.executeCommand("editor.action.codelens.refresh");
@@ -42,9 +43,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }, 10);
   };
 
-  const getTraceOptions = async (): Promise<Array<{ uri: string; label: string }>> => {
+  const refreshTraceOptionsCache = async (): Promise<void> => {
     const traceUris = await listTraceFiles();
-    return traceUris.map((uri) => ({
+    traceOptionsCache = traceUris.map((uri) => ({
       uri: uri.toString(),
       label: vscode.workspace.asRelativePath(uri, false),
     }));
@@ -90,12 +91,18 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshCodeLenses();
     }
 
+    if (!traceOptionsCache) {
+      await refreshTraceOptionsCache();
+    }
+
+    const traceOptions = traceOptionsCache ?? [];
+
     if (panel) {
       panel.updateState({
         traceUri: state.traceFile.uri,
         trace: state.traceFile.document,
         currentStepIndex: boundedIndex,
-        traceOptions: await getTraceOptions(),
+        traceOptions,
       });
     } else {
       panel = new CodeFlowPanel(
@@ -104,7 +111,7 @@ export function activate(context: vscode.ExtensionContext): void {
           traceUri: state.traceFile.uri,
           trace: state.traceFile.document,
           currentStepIndex: boundedIndex,
-          traceOptions: await getTraceOptions(),
+          traceOptions,
         },
         {
           onSelectTrace: (traceUri) => {
@@ -153,6 +160,7 @@ export function activate(context: vscode.ExtensionContext): void {
     try {
       state.traceFile = await parseTraceFile(traceUri);
       state.currentStepIndex = 0;
+      await refreshTraceOptionsCache();
       await updateUi();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -228,7 +236,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("flownote.previousCallStep", previousCallStep),
     vscode.commands.registerCommand("flownote.nextResumeStep", nextResumeStep),
     vscode.commands.registerCommand("flownote.copyPromptForAi", copyPromptForAi),
-    vscode.commands.registerCommand("flownote.createExampleTodoFiles", createExampleTodoFiles),
+    vscode.commands.registerCommand("flownote.createExampleTodoFiles", async () => {
+      await createExampleTodoFiles();
+      traceOptionsCache = undefined;
+      if (state.traceFile) {
+        await refreshTraceOptionsCache();
+        await updateUi();
+      }
+    }),
     vscode.commands.registerCommand("flownote.noop", () => {}),
   );
 
@@ -253,6 +268,11 @@ export function activate(context: vscode.ExtensionContext): void {
         FlowNoteControlsViewProvider.viewType,
         controlsViewProvider,
       ),
+    );
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        traceOptionsCache = undefined;
+      }),
     );
   } catch (error) {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);

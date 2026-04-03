@@ -1,7 +1,7 @@
 {
   "name": "flownote",
   "displayName": "FlowNote",
-  "version": "0.0.4",
+  "version": "0.1.1",
   "description": "Trace AI-generated code-flow JSON files inside VS Code.",
   "categories": [
     "Other"
@@ -22,7 +22,6 @@
   "publisher": "shimaf4979",
   "files": [
     "dist",
-    "examples",
     "icon.png",
     "README.md",
     "LICENSE",
@@ -48,7 +47,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "~1.85.0",
     "@vscode/vsce": "^3.7.1",
     "ovsx": "^0.10.10",
     "oxfmt": "^0.43.0",
@@ -161,6 +160,6 @@
     "onCommand:flownote.createExampleTodoFiles"
   ],
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.85.0"
   }
 }
