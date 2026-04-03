@@ -200,6 +200,99 @@ export function activate(context: vscode.ExtensionContext): void {
     await updateUi();
   };
 
+  const getPanelHandlers = () => ({
+    onSelectTrace: (traceUri: string) => {
+      void openTrace(vscode.Uri.parse(traceUri));
+    },
+    onSelectStep: (stepIndex: number) => {
+      state.currentStepIndex = stepIndex;
+      void updateUi({ scrollEditor: false });
+    },
+    onNextStep: () => {
+      state.currentStepIndex += 1;
+      void updateUi();
+    },
+    onPreviousStep: () => {
+      state.currentStepIndex -= 1;
+      void updateUi();
+    },
+    onPreviousCallStep: () => {
+      void previousCallStep();
+    },
+    onNextResumeStep: () => {
+      void nextResumeStep();
+    },
+    onDispose: () => {
+      panel = undefined;
+    },
+  });
+
+  const buildLoadingPanelState = (traceUri: vscode.Uri): CodeFlowPanelState => ({
+    loading: true,
+    traceUri: traceUri.toString(),
+    trace: {
+      version: 1,
+      name: "読み込み中…",
+      description: "",
+      entry: { file: "", line: 1 },
+      steps: [],
+    },
+    currentStepIndex: 0,
+    traceOptions:
+      traceOptionsCache ?? [
+        { uri: traceUri.toString(), label: vscode.workspace.asRelativePath(traceUri, false) },
+      ],
+  });
+
+  const showTraceLoadingPanel = (traceUri: vscode.Uri): void => {
+    const loadingState = buildLoadingPanelState(traceUri);
+    if (panel) {
+      panel.updateState(loadingState);
+    } else {
+      panel = new CodeFlowPanel(context.extensionUri, loadingState, getPanelHandlers());
+      context.subscriptions.push(panel);
+      panel.reveal(true);
+      if (!hasAdjustedEditorLayout) {
+        hasAdjustedEditorLayout = true;
+        setTimeout(() => {
+          void vscode.commands.executeCommand("workbench.action.evenEditorWidths");
+        }, 30);
+      }
+    }
+  };
+
+  openTrace = async (traceUriArg?: vscode.Uri): Promise<void> => {
+    const traceUri = traceUriArg ?? (await pickTraceFile());
+    if (!traceUri) {
+      return;
+    }
+
+    const previousTrace = state.traceFile;
+    showTraceLoadingPanel(traceUri);
+
+    try {
+      state.traceFile = await parseTraceFile(traceUri);
+      state.currentStepIndex = 0;
+      await refreshTraceOptionsCache();
+      await updateUi();
+    } catch (error) {
+      state.traceFile = previousTrace;
+      if (state.traceFile) {
+        try {
+          await refreshTraceOptionsCache();
+          await updateUi();
+        } catch {
+          // ignore secondary failures
+        }
+      } else if (panel) {
+        panel.dispose();
+        panel = undefined;
+      }
+      const message = error instanceof Error ? error.message : "Unknown error";
+      void vscode.window.showErrorMessage(`FlowNote: failed to open trace.\n${message}`);
+    }
+  };
+
   // Register commands first so command IDs are always available even if view registration fails.
   context.subscriptions.push(
     vscode.commands.registerCommand("flownote.openTrace", openTrace),

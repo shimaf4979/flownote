@@ -591,7 +591,7 @@ export class CodeFlowPanel implements vscode.Disposable {
           return \`
                 <div class="card">
                   <p class="eyebrow">Current Step</p>
-                  <p>トレースを読み込み中… ステップ一覧の準備ができ次第、ここに表示されます。</p>
+                  <p>トレースを読み込み中…</p>
                 </div>
           \`;
         }
