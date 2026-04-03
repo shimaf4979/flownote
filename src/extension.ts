@@ -9,7 +9,7 @@ import { StepCodeLensProvider } from "./editor/stepCodeLensProvider";
 import { CodeFlowPanel, type CodeFlowPanelState } from "./panel/codeFlowPanel";
 import { listTraceFiles, parseTraceFile, pickTraceFile } from "./trace/parser";
 import type { ParsedTraceFile } from "./trace/schema";
-import { FlowNoteControlsViewProvider } from "./views/controlsView";
+import { FlowNoteControlsTreeDataProvider } from "./views/controlsView";
 
 interface ExtensionState {
   traceFile?: ParsedTraceFile;
@@ -24,7 +24,6 @@ export function activate(context: vscode.ExtensionContext): void {
   let decorations: TraceEditorDecorations | undefined;
   let hoverProvider: TraceHoverProvider | undefined;
   let stepCodeLensProvider: StepCodeLensProvider | undefined;
-  let controlsViewProvider: FlowNoteControlsViewProvider | undefined;
   const state: ExtensionState = {
     currentStepIndex: 0,
   };
@@ -317,16 +316,13 @@ export function activate(context: vscode.ExtensionContext): void {
     decorations = new TraceEditorDecorations();
     hoverProvider = new TraceHoverProvider();
     stepCodeLensProvider = new StepCodeLensProvider();
-    controlsViewProvider = new FlowNoteControlsViewProvider();
+    const controlsTreeDataProvider = new FlowNoteControlsTreeDataProvider();
+    const controlsTreeView = vscode.window.createTreeView(FlowNoteControlsTreeDataProvider.viewId, {
+      treeDataProvider: controlsTreeDataProvider,
+      showCollapseAll: false,
+    });
 
-    context.subscriptions.push(decorations, hoverProvider, stepCodeLensProvider);
-
-    context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(
-        FlowNoteControlsViewProvider.viewType,
-        controlsViewProvider,
-      ),
-    );
+    context.subscriptions.push(decorations, hoverProvider, stepCodeLensProvider, controlsTreeView);
     context.subscriptions.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         traceOptionsCache = undefined;

@@ -1,7 +1,7 @@
 {
   "name": "flownote",
   "displayName": "FlowNote",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Trace AI-generated code-flow JSON files inside VS Code.",
   "categories": [
     "Other"
@@ -68,8 +68,7 @@
       "flownote": [
         {
           "id": "flownote.controls",
-          "name": "Flow Controls",
-          "type": "webview"
+          "name": "Flow Controls"
         }
       ]
     },
